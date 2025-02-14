@@ -24,6 +24,7 @@ Route::get('/user', function (Request $request) {
 //Auth
 Route::post('/v1/auth/login', [AuthController::class, 'login']);
 Route::post('/v1/auth/register', [AuthController::class, 'register']);
+Route::post('/v1/auth/refresh-token', [AuthController::class, 'refreshToken']);
 Route::middleware('auth:api')->post('/refresh-password', [AuthController::class, 'refreshPassword']);
 
 //Admin

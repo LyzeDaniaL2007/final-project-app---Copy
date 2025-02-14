@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
 use Exception;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
@@ -157,5 +159,46 @@ class AuthController extends Controller
             'message' => 'Failed to reset password.',
             'errors' => ['email' => __($status)],
         ], 400);
+    }
+
+    public function refreshToken(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid email or password.'
+            ], 401);
+        }
+
+        try {
+            $newToken = JWTAuth::fromUser($user);
+            return response()->json([
+                'success' => true,
+                'message' => 'Token refreshed successfully.',
+                'token' => $newToken,
+                'user' => $user
+            ], 200);
+        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to refresh token.',
+                'errors' => $e->getMessage()
+            ], 500);
+        }
     }
 }
