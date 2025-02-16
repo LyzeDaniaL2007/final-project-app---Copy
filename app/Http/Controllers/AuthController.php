@@ -12,6 +12,9 @@ use Illuminate\Support\Str;
 use Exception;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class AuthController extends Controller
 {
@@ -90,77 +93,57 @@ class AuthController extends Controller
     public function forgotPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'email' => 'required|email|exists:users,email',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send password reset email.',
-                'data' => null,
-                'errors' => $validator->errors(),
-            ], 400);
+            return response()->json(['error' => $validator->errors()], 422);
         }
 
-        $status = Password::sendResetLink($request->only('email'));
+        // Buat token reset password
+        $token = Str::random(60);
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Password reset link sent successfully.',
-            ], 200);
-        }
+        // Kirim token ke email
+        Mail::raw("Gunakan token berikut untuk mereset password Anda: $token", function ($message) use ($request) {
+            $message->to($request->email)
+                ->subject('Reset Password Token');
+        });
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to send password reset link.',
-            'errors' => ['email' => __($status)],
-        ], 400);
+        // Simpan token di session atau cache (tanpa tabel tambahan)
+        Cache::put("reset_password_{$request->email}", $token, now()->addMinutes(30));
+
+        return response()->json(['message' => 'Token reset password telah dikirim ke email Anda']);
     }
 
     public function resetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'email' => 'required|email|exists:users,email',
             'token' => 'required',
             'password' => 'required|min:6|confirmed',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to reset password.',
-                'data' => null,
-                'errors' => $validator->errors(),
-            ], 400);
+            return response()->json(['error' => $validator->errors()], 422);
         }
 
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                ])->setRememberToken(Str::random(60));
+        // Periksa token di cache
+        $cachedToken = Cache::get("reset_password_{$request->email}");
 
-                $user->save();
-                event(new PasswordReset($user));
-            }
-        );
-
-        if ($status === Password::PASSWORD_RESET) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Password has been reset successfully.',
-            ], 200);
+        if (!$cachedToken || $cachedToken !== $request->token) {
+            return response()->json(['error' => 'Token tidak valid atau sudah kedaluwarsa'], 400);
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to reset password.',
-            'errors' => ['email' => __($status)],
-        ], 400);
+        // Update password user
+        $user = User::where('email', $request->email)->first();
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Hapus token setelah digunakan
+        Cache::forget("reset_password_{$request->email}");
+
+        return response()->json(['message' => 'Password berhasil direset']);
     }
-
     public function refreshToken(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -200,5 +183,14 @@ class AuthController extends Controller
                 'errors' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function logout()
+    {
+        auth('api')->logout();
+        return response()->json([
+            'success' => true,
+            'message' => 'Successfully logged out'
+        ]);
     }
 }
