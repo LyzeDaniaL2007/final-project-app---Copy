@@ -47,6 +47,17 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
+    public static function getAllUser()
+    {
+        return self::all();
+    }
+
+    // Get admin by ID
+    public static function getUserById($id)
+    {
+        return self::where('user_id', $id)->first();  // Menggunakan user_id sebagai kolom pencarian
+    }
+
     public function getJWTIdentifier()
     {
         return $this->getKey();

@@ -30,6 +30,9 @@ Route::get('/v1/auth/reset-password/{token}', function ($token) {
     return response()->json(['token' => $token, 'message' => 'Use this token to reset password']);
 })->name('password.reset');
 Route::post('/v1/auth/refresh-token', [AuthController::class, 'refreshToken']);
+Route::post('/v1/auth/logout', [AuthController::class, 'logout']);
+Route::get('/v1/auth/users', [AuthController::class, 'getUsers']); // Ambil semua user
+Route::get('/v1/auth/users/{id}', [AuthController::class, 'getUserById']); // Ambil user berdasarkan ID
 Route::middleware('auth:api')->post('/refresh-password', [AuthController::class, 'refreshPassword']);
 
 //Admin

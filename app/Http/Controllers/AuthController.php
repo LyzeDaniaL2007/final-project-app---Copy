@@ -25,26 +25,31 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|min:6',
         ]);
-
+    
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to register. Please check your input data.',
-                'data' => null,
                 'errors' => $validator->errors(),
             ], 400);
         }
-
+    
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
-
+    
+        // Langsung login setelah register
+        $token = JWTAuth::fromUser($user);
+    
         return response()->json([
             'success' => true,
-            'message' => 'Successfully registered.',
-            'data' => $user,
+            'message' => 'Successfully registered and logged in.',
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => 60 * 60,
+            'user' => $user,
         ], 201);
     }
 
@@ -54,26 +59,33 @@ class AuthController extends Controller
             'email' => 'required|email',
             'password' => 'required',
         ]);
-
+    
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to login. Please check your input data.',
-                'data' => null,
                 'errors' => $validator->errors(),
             ], 400);
         }
-
+    
         $credentials = $request->only('email', 'password');
         if (!$token = auth('api')->attempt($credentials)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to login. Incorrect email or password.',
-                'data' => null,
             ], 401);
         }
-
-        return $this->createTokenResponse($token);
+    
+        $user = auth('api')->user();
+    
+        return response()->json([
+            'success' => true,
+            'message' => 'Successfully logged in.',
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => 60 * 60,
+            'user' => $user,
+        ], 200);
     }
 
     private function createTokenResponse($token)
@@ -192,5 +204,34 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Successfully logged out'
         ]);
+    }
+
+    public function getUsers()
+    {
+        $users = User::all();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'List of all users.',
+            'data' => $users,
+        ], 200);
+    }
+
+    public function getUserById($id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User details.',
+            'data' => $user,
+        ], 200);
     }
 }
