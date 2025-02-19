@@ -88,7 +88,6 @@ class PenyewaanDetailController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Penyewaan detail not found',
-                    'data' => null,
                 ], 404);
             }
 
@@ -102,7 +101,6 @@ class PenyewaanDetailController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'There was an error in the internal server',
-                'data' => null,
                 'errors' => $error->getMessage(),
             ], 500);
         }

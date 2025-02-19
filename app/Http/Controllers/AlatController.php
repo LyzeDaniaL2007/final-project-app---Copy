@@ -86,6 +86,7 @@ class AlatController extends Controller
                 'alat_deskripsi' => 'nullable|string',
                 'alat_hargaperhari' => 'required|numeric',
                 'alat_stok' => 'required|integer',
+                'alat_gambar_file' => 'required|',
             ]);
 
             if ($validator->fails()) {
@@ -123,8 +124,10 @@ class AlatController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'alat_nama' => 'sometimes|string|max:255',
+                'alat_deskripsi' => 'sometimes|string|max:255',
                 'alat_hargaperhari' => 'sometimes|integer',
                 'alat_stok' => 'sometimes|integer',
+                'alat_gambar_file' => 'sometimes|',
             ]);
 
             if ($validator->fails()) {

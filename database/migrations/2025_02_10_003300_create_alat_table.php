@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('alat_deskripsi')->nullable();
             $table->integer('alat_hargaperhari')->nullable(false);
             $table->integer('alat_stok')->nullable(false);
+            $table->string('alat_gambar_file')->nullable();
             $table->timestamps();
 
             // Foreign key constraint
